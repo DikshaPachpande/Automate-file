@@ -1,64 +1,31 @@
 import boto3
 import os
-import mimetypes
 
-# Read environment variables
-AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY_ID")
-AWS_SECRET_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-AWS_REGION = os.getenv("AWS_REGION")
-BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
+# Debug: check files
+print(" Files in current directory:")
+print(os.listdir())
 
-# Validate env variables
-if not all([AWS_ACCESS_KEY, AWS_SECRET_KEY, AWS_REGION, BUCKET_NAME]):
-    raise Exception(" Missing AWS configuration in environment variables")
+# Get environment variables
+bucket_name = os.getenv("S3_BUCKET_NAME")
+region = os.getenv("AWS_REGION")
 
-# Create S3 client
-s3 = boto3.client(
-    "s3",
-    aws_access_key_id=AWS_ACCESS_KEY,
-    aws_secret_access_key=AWS_SECRET_KEY,
-    region_name=AWS_REGION
-)
+if not bucket_name:
+    raise Exception(" S3_BUCKET_NAME not set")
 
-def upload_file(file_path, bucket, object_name):
-    """Upload a single file to S3"""
-    try:
-        content_type, _ = mimetypes.guess_type(file_path)
-        extra_args = {}
+# Create S3 client (credentials auto from GitHub Actions)
+s3 = boto3.client("s3", region_name=region)
 
-        if content_type:
-            extra_args["ContentType"] = content_type
+try:
+    print("⬆️ Uploading index.html...")
+    
+    s3.upload_file(
+        "index.html",   # local file
+        bucket_name,    # bucket
+        "automated-file-upload-on-s3"    # S3 path (ROOT FIX)
+    )
 
-        s3.upload_file(
-            file_path,
-            bucket,
-            object_name,
-            ExtraArgs=extra_args
-        )
+    print(" Upload successful!")
 
-        print(f"Uploaded: {object_name}")
-
-    except Exception as e:
-        print(f"❌ Failed to upload {object_name}: {e}")
-
-
-def upload_all_files():
-    """Upload all files from current directory"""
-    for root, dirs, files in os.walk("."):
-        for file in files:
-            # Skip unnecessary files/folders
-            if ".git" in root or ".github" in root or "__pycache__" in root:
-                continue
-
-            file_path = os.path.join(root, file)
-
-            # Remove './' from path to keep clean S3 structure
-            s3_path = file_path.replace("./", "")
-
-            upload_file(file_path, BUCKET_NAME, s3_path)
-
-
-if __name__ == "__main__":
-    print("Starting deployment to S3...")
-    upload_all_files()
-    print("Deployment completed!")
+except Exception as e:
+    print(" Upload failed:", e)
+    raise
