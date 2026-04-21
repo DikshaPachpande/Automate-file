@@ -3,7 +3,7 @@ import os
 
 print("Current files:", os.listdir())
 
-bucket = os.environ.get("S3_BUCKET_NAME")
+bucket = os.environ.get("automates-file-upload-on-s3")
 
 if not bucket:
     
